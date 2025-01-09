@@ -13,8 +13,12 @@ sensor.set_auto_whitebal(False)  # must be turned off for color tracking
 i2c = pyb.I2C(2, pyb.I2C.SLAVE, addr=0x42)
 
 # Values to send
-xb = 0  # Example value 1
-yb = 0  # Example value 2
+x_ball = 0
+y_ball = 0
+x_yellow = 0
+y_yellow = 0
+x_blue = 0
+y_blue = 0
 
 
 clock = time.clock()
@@ -28,13 +32,17 @@ tr = [
     threshold_Blue
 ]
 def bigest(blobs):
-    m = blobs[0].area()
-    b = blobs[0]
-    for blob in blobs:
-        if blob.area() > m:
-            m = blob.area()
-            b = blob
-    return b
+    if not blobs:
+        return None  # Return None if the list is empty
+    return max(blobs, key=lambda blob: blob.area())  # Find the blob with the largest area
+
+    # m = blobs[0].area()
+    # b = blobs[0]
+    # for blob in blobs:
+    #     if blob.area() > m:
+    #         m = blob.area()
+    #         b = blob
+    # return b
 while True:
     clock.tick()
     img = sensor.snapshot()
@@ -46,16 +54,31 @@ while True:
     if len(yellow_blobs) > 0:
         goaly = bigest(yellow_blobs)
         img.draw_rectangle(goaly.rect(), (250,250,0), fill=True)
+        x_yellow = goaly.x()
+        y_yellow = goaly.y()
+    else:
+        x_yellow = 0
+        y_yellow = 0
     if len(blue_blobs) > 0:
         goalb = bigest(blue_blobs)
         img.draw_rectangle(goalb.rect(), (0,0,250), fill=True)
+        x_blue = goalb.x()
+        y_blue = goalb.y()
+    else:
+        x_blue = 0
+        y_blue = 0
     if len(orenge_blobs) > 0:
         ball = bigest(orenge_blobs)
         img.draw_rectangle(ball.rect(), (250,100,0), fill=True)
+        x_ball = ball.x()
+        y_ball = ball.y()
+    else:
+        x_ball = 0
+        y_ball = 0
 
     try:
-        data = ustruct.pack("<hh", xb, yb)
+        data = ustruct.pack("<hhhhhh", x_ball, y_ball, x_yellow, y_yellow, x_blue, y_blue)
         # print(xb, yb)
-        # i2c.send(data)
+        i2c.send(data)
     except OSError as e:
         print("I2C Error:", e)
