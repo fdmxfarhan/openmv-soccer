@@ -14,10 +14,25 @@ int angle_ball, direction_ball, distance_ball;
 bool is_ball = false;
 #define robot_x 154
 #define robot_y 94
-
+#define v 10000
+int buff[8];
+int counter, GY;
 
 void setup() {
   pinMode(PC13, OUTPUT);
+  pinMode(PB12, OUTPUT);
+  pinMode(PB13, OUTPUT);
+  pinMode(PB14, OUTPUT);
+  pinMode(PB15, OUTPUT);
+  pinMode(PA8, PWM);
+  pinMode(PB8, PWM);
+  pinMode(PB7, PWM);
+  pinMode(PB6, PWM);
+  pinMode(PC14, OUTPUT);  //////SPIN
+  pinMode(PC15, OUTPUT);  //////SHOOT
+  motor(0, 0, 0, 0);
+  Serial1.begin(115200);
+
   delay(500);
   Wire.begin();
   delay(500);
@@ -33,10 +48,15 @@ void setup() {
   delay(500);
   display.clearDisplay();
   display.setTextSize(1);
+  // -------------------- Serial Settings for GY-25
+  Serial1.write(0xA5);
+  Serial1.write(0x54); // set 0
+  delay(500);
+  Serial1.write(0xA5);
+  Serial1.write(0x51); // poll
 }
 
 void loop() {
-
   Wire.requestFrom(slaveAddress, 12);  // Request 12 bytes (6 values * 2 bytes each)
 
   if (Wire.available() == 12) {
@@ -56,13 +76,43 @@ void loop() {
     angle_ball = get_angle(ball_x, ball_y);
     direction_ball = get_direction(angle_ball);
     distance_ball = sqrt(pow(ball_x - robot_x, 2) + pow(ball_y - robot_y, 2));
-    is_ball = true;
+    if (ball_x == 0 && ball_y == 0) is_ball = false;
+    else  is_ball = true;
   }
 
+  // -------------------- GY-25 Read Data
+  Serial1.write(0xA5);
+  Serial1.write(0x51);
+  while (true) {
+    buff[counter] = Serial1.read();
+    if (counter == 0 && buff[0] != 0xAA) break;
+    counter++;
+    if (counter == 8) {
+      counter = 0;
+      if (buff[0] == 0xAA && buff[7] == 0x55) {
+        GY = (int16_t)(buff[1] << 8 | buff[2]) / 100;
+        if(GY > 180) GY -= 360;
+        if(GY <-180) GY += 360;
+        
+      }
+    }
+  }
 
+  if(is_ball) moveAngle(90);
+  else        motor(0,0,0,0);
 
   display.clearDisplay();
   display.drawCircle(100, 32, 12, WHITE);
+  display.drawLine(
+    100 + sin(GY * PI / 180) * 9, 
+    32 - cos(GY * PI / 180) * 9, 
+    100 - sin(GY * PI / 180) * 9, 
+    32 + cos(GY * PI / 180) * 9, 
+    WHITE);
+  display.fillCircle(
+    100 - sin(GY * PI / 180) * 9, 
+    32 + cos(GY * PI / 180) * 9,
+    2, WHITE);
   if (is_ball)
     display.fillCircle(100 + sin(angle_ball * PI / 180) * 20, 32 - cos(angle_ball * PI / 180) * 20, 3, WHITE);
 
@@ -98,4 +148,64 @@ int get_direction(int angle) {
   }
   if (angle <= 11.25 || angle >= 348.5) direction = 0;
   return direction;
+}
+
+void motor(int ML1, int ML2, int MR2, int MR1) {
+  // if (GY > 6 && GY <= 30) GY = 30;
+  // else if (GY > 30 && GY <= 80) GY = 80;
+  // else if (GY > 80 && GY <= 180) GY = 150;
+  // else if (GY < -6 && GY >= -30) GY = -30;
+  // else if (GY < -30 && GY >= -80) GY = -80;
+  // else if (GY < -80 && GY >= -180) GY = -150;
+  // ML1 += GY;
+  // ML2 += GY;
+  // MR2 += GY;
+  // MR1 += GY;
+  // ML1 *= 255;
+  // ML2 *= 255;
+  // MR2 *= 255;
+  // MR1 *= 255;
+  if (ML1 > 65535) ML1 = 65535;
+  if (ML2 > 65535) ML2 = 65535;
+  if (MR2 > 65535) MR2 = 65535;
+  if (MR1 > 65535) MR1 = 65535;
+  if (ML1 < -65535) ML1 = -65535;
+  if (ML2 < -65535) ML2 = -65535;
+  if (MR2 < -65535) MR2 = -65535;
+  if (MR1 < -65535) MR1 = -65535;
+  if (ML1 > 0) {
+    digitalWrite(PB15, 0);
+    pwmWrite(PA8, ML1);
+  } else {
+    digitalWrite(PB15, 1);
+    pwmWrite(PA8, ML1 + 65535);
+  }
+  if (ML2 > 0) {
+    digitalWrite(PB14, 0);
+    pwmWrite(PB8, ML2);
+  } else {
+    digitalWrite(PB14, 1);
+    pwmWrite(PB8, ML2 + 65535);
+  }
+  if (MR2 > 0) {
+    digitalWrite(PB13, 0);
+    pwmWrite(PB7, MR2);
+  } else {
+    digitalWrite(PB13, 1);
+    pwmWrite(PB7, MR2 + 65535);
+  }
+  if (MR1 > 0) {
+    digitalWrite(PB12, 0);
+    pwmWrite(PB6, MR1);
+  } else {
+    digitalWrite(PB12, 1);
+    pwmWrite(PB6, MR1 + 65535);
+  }
+}
+void moveAngle(int a){
+	if(a>360)     a-=360;
+	if(a<0)       a+=360;
+	int x = -v * cos(a * M_PI / 180);
+	int y = -v * sin(a * M_PI / 180);
+	motor((x + y) , (x - y) , (- x - y), (y - x));
 }
