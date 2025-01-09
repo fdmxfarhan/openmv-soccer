@@ -10,11 +10,15 @@ int16_t yellow_y = 0;
 int16_t blue_x = 0;
 int16_t blue_y = 0;
 const int slaveAddress = 0x42;
-int angle_ball, direction_ball, distance_ball;
+int ball_angle, direction_ball, distance_ball;
+int yellow_angle, direction_yellow, distance_yellow;
+int blue_angle, direction_blue, distance_blue;
 bool is_ball = false;
+bool is_yellow = false;
+bool is_blue = false;
 #define robot_x 154
 #define robot_y 94
-#define v 10000
+#define v 30000
 int buff[8];
 int counter, GY;
 
@@ -57,8 +61,17 @@ void setup() {
 }
 
 void loop() {
-  Wire.requestFrom(slaveAddress, 12);  // Request 12 bytes (6 values * 2 bytes each)
+  read_MV();
+  read_GY();
+  
 
+  if(is_ball) moveAngle(ball_angle);
+  else        motor(0,0,0,0);
+
+  display_all();
+}
+void read_MV(){
+  Wire.requestFrom(slaveAddress, 12);  // Request 12 bytes (6 values * 2 bytes each)
   if (Wire.available() == 12) {
     uint8_t buffer[12];
     for (int i = 0; i < 12; i++) {
@@ -73,13 +86,24 @@ void loop() {
     blue_x = (int16_t)(buffer[8] | (buffer[9] << 8));
     blue_y = (int16_t)(buffer[10] | (buffer[11] << 8));
 
-    angle_ball = get_angle(ball_x, ball_y);
-    direction_ball = get_direction(angle_ball);
+    ball_angle = get_angle(ball_x, ball_y);
+    // direction_ball = get_direction(ball_angle);
     distance_ball = sqrt(pow(ball_x - robot_x, 2) + pow(ball_y - robot_y, 2));
+    yellow_angle = get_angle(yellow_x, yellow_y);
+    // direction_yellow = get_direction(yellow_angle);
+    distance_yellow = sqrt(pow(yellow_x - robot_x, 2) + pow(yellow_y - robot_y, 2));
+    blue_angle = get_angle(blue_x, blue_y);
+    // direction_blue = get_direction(blue_angle);
+    distance_blue = sqrt(pow(blue_x - robot_x, 2) + pow(blue_y - robot_y, 2));
     if (ball_x == 0 && ball_y == 0) is_ball = false;
     else  is_ball = true;
+    if (yellow_x == 0 && yellow_y == 0) is_yellow = false;
+    else  is_yellow = true;
+    if (blue_x == 0 && blue_y == 0) is_blue = false;
+    else  is_blue = true;
   }
-
+}
+void read_GY(){
   // -------------------- GY-25 Read Data
   Serial1.write(0xA5);
   Serial1.write(0x51);
@@ -97,28 +121,39 @@ void loop() {
       }
     }
   }
-
-  if(is_ball) moveAngle(90);
-  else        motor(0,0,0,0);
-
+}
+void display_all(){
   display.clearDisplay();
-  display.drawCircle(100, 32, 12, WHITE);
+  display.drawCircle(64, 32, 5, WHITE);
   display.drawLine(
-    100 + sin(GY * PI / 180) * 9, 
-    32 - cos(GY * PI / 180) * 9, 
-    100 - sin(GY * PI / 180) * 9, 
-    32 + cos(GY * PI / 180) * 9, 
+    64 + sin(GY * PI / 180) * 4, 
+    32 - cos(GY * PI / 180) * 4, 
+    64 - sin(GY * PI / 180) * 4, 
+    32 + cos(GY * PI / 180) * 4, 
     WHITE);
-  display.fillCircle(
-    100 - sin(GY * PI / 180) * 9, 
-    32 + cos(GY * PI / 180) * 9,
-    2, WHITE);
+  if (is_yellow)
+    display.drawLine(
+        64 + sin((yellow_angle - 10) * PI / 180) * 15, 
+        32 - cos((yellow_angle - 10) * PI / 180) * 15, 
+        64 + sin((yellow_angle + 10) * PI / 180) * 15, 
+        32 - cos((yellow_angle + 10) * PI / 180) * 15, 
+      WHITE);
+  if (is_blue)
+    display.drawLine(
+        64 + sin((blue_angle - 10) * PI / 180) * 16, 
+        32 - cos((blue_angle - 10) * PI / 180) * 16, 
+        64 + sin((blue_angle + 10) * PI / 180) * 16, 
+        32 - cos((blue_angle + 10) * PI / 180) * 16, 
+      WHITE);
   if (is_ball)
-    display.fillCircle(100 + sin(angle_ball * PI / 180) * 20, 32 - cos(angle_ball * PI / 180) * 20, 3, WHITE);
+    display.fillCircle(
+      64 + sin(ball_angle * PI / 180) * 10, 
+      32 - cos(ball_angle * PI / 180) * 10, 
+      2, WHITE);
 
-  display.setCursor(0, 20);
-  display.print("a:");
-  display.println(angle_ball);
+  // display.setCursor(0, 20);
+  // display.print("a:");
+  // display.println(ball_angle);
 
   // display.setCursor(0, 20);
   // display.print("ball_x:");
@@ -135,7 +170,6 @@ void loop() {
   // display.println(blue_y);
   display.display();
 }
-
 int get_angle(int x, int y) {
   int angle = atan2(x - robot_x, y - robot_y) * 180 / PI;
   if (angle < 0) angle += 360;
@@ -149,7 +183,6 @@ int get_direction(int angle) {
   if (angle <= 11.25 || angle >= 348.5) direction = 0;
   return direction;
 }
-
 void motor(int ML1, int ML2, int MR2, int MR1) {
   // if (GY > 6 && GY <= 30) GY = 30;
   // else if (GY > 30 && GY <= 80) GY = 80;
