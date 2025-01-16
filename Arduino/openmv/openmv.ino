@@ -16,7 +16,7 @@ int blue_angle, direction_blue, distance_blue;
 bool is_ball = false;
 bool is_yellow = false;
 bool is_blue = false;
-#define robot_x 154
+#define robot_x 152
 #define robot_y 94
 #define v 30000
 int buff[8];
@@ -65,7 +65,11 @@ void loop() {
   read_GY();
   
 
-  if(is_ball) moveAngle(ball_angle);
+  if(is_ball) {
+    if (ball_angle > 350 || ball_angle < 10) moveAngle(ball_angle);
+    else if(ball_angle < 180) moveAngle(ball_angle + 40 );
+    else if(ball_angle >=180) moveAngle(ball_angle - 40 );
+  }
   else        motor(0,0,0,0);
 
   display_all();
@@ -155,11 +159,11 @@ void display_all(){
   // display.print("a:");
   // display.println(ball_angle);
 
-  // display.setCursor(0, 20);
-  // display.print("ball_x:");
-  // display.println(ball_x);
-  // display.print("ball_y:");
-  // display.println(ball_y);
+  display.setCursor(0, 20);
+  display.print("ball_x:");
+  display.println(ball_x);
+  display.print("ball_y:");
+  display.println(ball_y);
   // display.print("yellow_x:");
   // display.println(yellow_x);
   // display.print("yellow_y:");
