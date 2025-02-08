@@ -7,7 +7,7 @@ void setup() {
 
 void loop() {
   r.readSensors();
-  r.readInputs();
+  r.readInputs(); 
   r.read_GY();
   r.read_MV();
   // r.printSensors();
