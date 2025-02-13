@@ -1,8 +1,10 @@
 #include <rcj_robot.h>
 RCJ_Robot r;
+int cnt_back = 0;
 void setup() {
   r.robot1_x = 158;
   r.robot1_y = 120;
+  r.GY_SENS = 80;
   r.init();
   r.setBoostPWM(3000);
   r.buzzer(1);
@@ -19,7 +21,8 @@ void loop() {
   else r.printCam();
   if (r.SW2) r.set_GY();
   if (r.SW1 && r.Ball_In_Kicker) r.shoot();
-
+  if (r.DIP2 && r.DIP1) r.spin(1);
+  else if (r.DIP2) r.spin(0);
 
   if (r.DIP2) r.stop();
   else if (r.Ball_In_Kicker) {
@@ -30,20 +33,23 @@ void loop() {
         r.shoot();
       }
     } else {
-      r.speed = 50000;
+      r.speed = 65000;
       r.move(0);
       r.shoot();
     }
   } else if (r.is_ball) {
+    cnt_back = 0;
     r.spin(r.DIP1);
     if (r.distance_ball < 95) {
-      r.speed = 30000;
-      if (r.ball_angle < 20 || r.ball_angle > 340) {
-        r.moveAngle(r.ball_angle);
+      r.speed = 25000;
+      if (r.ball_angle < 15 || r.ball_angle > 345) {
+        r.moveAngle(0);
         r.speed = 40000;
-      }
-      else if (r.ball_angle < 60) r.moveAngle(r.ball_angle + 60);
-      else if (r.ball_angle > 300) r.moveAngle(r.ball_angle - 60);
+      } else if (r.ball_angle < 40 || r.ball_angle > 320) {
+        r.moveAngle(r.ball_angle);
+        r.speed = 30000;
+      } else if (r.ball_angle < 60) r.moveAngle(r.ball_angle + 40);
+      else if (r.ball_angle > 300) r.moveAngle(r.ball_angle - 40);
       else if (r.ball_angle < 180) r.moveAngle(r.ball_angle + 90);
       else r.moveAngle(r.ball_angle - 90);
     } else {
@@ -55,7 +61,9 @@ void loop() {
       else r.moveAngle(r.ball_angle - 60);
     }
   } else {
+    if (cnt_back < 30) r.moveAngle(180);
+    else r.stop();
     r.spin(0);
-    r.stop();
+    cnt_back++;
   }
 }
