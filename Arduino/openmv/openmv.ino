@@ -6,7 +6,6 @@ void setup() {
   r.robot1_y = 120;
   r.GY_SENS = 80;
   r.init();
-  r.setBoostPWM(3000);
   r.buzzer(1);
   delay(100);
   r.buzzer(0);
