@@ -43,11 +43,13 @@ public:
     int ball_angle, direction_ball, distance_ball;
     int yellow_angle, direction_yellow, distance_yellow;
     int blue_angle, direction_blue, distance_blue;
+    int look_sens = 8;
     int GY = 0;
     int GY_SENS = 100;
     bool is_ball = false;
     bool is_yellow = false;
     bool is_blue = false;
+    bool reverse_GY = false;
     bool use_GY = true;
     bool SW1, SW2, DIP1, DIP2;
     uint16_t robot_x;
@@ -71,6 +73,7 @@ public:
     void read_MV();
     void read_GY();
     void moveAngle(int a);
+    void moveXY(int x, int y);
     void move(int direction);
     void spin(bool stat);
     void stop();

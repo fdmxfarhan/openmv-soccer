@@ -214,10 +214,15 @@ void RCJ_Robot::read_GY()
       if (buff[0] == 0xAA && buff[7] == 0x55)
       {
         GY = (int16_t)(buff[1] << 8 | buff[2]) / 100;
+        if(reverse_GY){
+          if(GY > 0) GY -= 180;
+          else GY += 180;
+        }
         if (GY > 180)
           GY -= 360;
         if (GY < -180)
           GY += 360;
+
       }
     }
   }
@@ -231,6 +236,15 @@ void RCJ_Robot::moveAngle(int a)
   int x = -speed * cos(a * M_PI / 180);
   int y = -speed * sin(a * M_PI / 180);
   motor(-(x + y), -(x - y), -(-x - y), -(y - x));
+}
+void RCJ_Robot::moveXY(int x, int y)
+{
+  int max_v = 40000;
+  if(x > max_v) x = max_v;
+  if(x <-max_v) x =-max_v;
+  if(y > max_v) y = max_v;
+  if(y <-max_v) y =-max_v;
+  motor(x+y, -x+y, -x-y, x-y);
 }
 void RCJ_Robot::move(int direction)
 {
@@ -305,8 +319,8 @@ void RCJ_Robot::readSensors()
     already_shooted = false;
 
   }
-  if( sensor[0] > 4090) setBoostPWM(0);
-  if( sensor[0] < 3500) setBoostPWM(6000);
+  if( sensor[0] > 4093) setBoostPWM(0);
+  if( sensor[0] < 3800) setBoostPWM(6000);
 }
 void RCJ_Robot::setMotorPins(int ML1, int ML2, int MR2, int MR1)
 {
@@ -514,9 +528,9 @@ void RCJ_Robot::shoot()
 }
 bool RCJ_Robot::lookToward(int angle)
 {
-  int turn_speed = 10000;
+  int turn_speed = 8000;
   GY = 0;
-  if (angle < 10 || angle > 350)
+  if (angle < look_sens || angle > 360-look_sens)
     return true;
   else if (angle < 180)
     motor(turn_speed, turn_speed, turn_speed, turn_speed);
