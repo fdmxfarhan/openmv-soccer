@@ -1,10 +1,15 @@
 #include <rcj_robot.h>
 RCJ_Robot r;
-int cnt_back = 0;
+int cnt_aim = 0;
+int cnt_ball_in_kick = 0;
+int target;
+int shift = 60;
+bool arrived_to_goal = false;
+#define Look_At_Goal false
 void setup() {
-  r.robot1_x = 158;
-  r.robot1_y = 120;
-  r.GY_SENS = 80;
+  r.robot1_x = 159;
+  r.robot1_y = 110;
+  r.GY_SENS = 100;
   r.init();
   r.buzzer(1);
   delay(100);
@@ -16,53 +21,77 @@ void loop() {
   r.readInputs();
   r.read_GY();
   r.read_MV();
-  if (r.DIP2) r.printSensors();
-  else r.printCam();
-  if (r.SW2) r.set_GY();
-  if (r.SW1 && r.Ball_In_Kicker) r.shoot();
-  if (r.DIP2 && r.DIP1) r.spin(1);
-  else if (r.DIP2) r.spin(0);
+  r.printCam();
+  r.display.setCursor(0, 50);
+  r.display.print("dy:");
+  r.display.println(r.distance_yellow);
+  r.display.display();
 
-  if (r.DIP2) r.stop();
-  else if (r.Ball_In_Kicker) {
-    r.spin(r.DIP1);
-    if (r.is_yellow && r.DIP1) {
-      if (r.lookToward(r.yellow_angle)) {
-        r.stop();
-        r.shoot();
-      }
-    } else {
-      r.speed = 65000;
-      r.move(0);
-      r.shoot();
-    }
-  } else if (r.is_ball) {
-    cnt_back = 0;
-    r.spin(r.DIP1);
-    if (r.distance_ball < 95) {
-      r.speed = 25000;
-      if (r.ball_angle < 15 || r.ball_angle > 345) {
+  if (r.SW2) r.set_GY();
+  if (r.SW1) r.shoot();
+  int ba = r.ball_angle;
+  int bd = r.distance_ball;
+  int xb = r.ball_x - r.robot1_x;
+  int yb = r.ball_y - r.robot1_y;
+  int v = 400;
+  r.GY_SENS = 100;
+  if (!r.DIP1) {
+    if (r.Ball_In_Kicker) {
+      r.reverse_GY = true;
+      r.spin(1);
+      r.stop();
+      if (!r.DIP2) {
+        r.reverse_GY = false;
+        r.speed = 60000;
         r.moveAngle(0);
-        r.speed = 40000;
-      } else if (r.ball_angle < 40 || r.ball_angle > 320) {
-        r.moveAngle(r.ball_angle);
-        r.speed = 30000;
-      } else if (r.ball_angle < 60) r.moveAngle(r.ball_angle + 40);
-      else if (r.ball_angle > 300) r.moveAngle(r.ball_angle - 40);
-      else if (r.ball_angle < 180) r.moveAngle(r.ball_angle + 90);
-      else r.moveAngle(r.ball_angle - 90);
+        r.shoot();
+      } else {
+        r.speed = 15000;
+        // r.GY_SENS = 50;
+        if (cnt_ball_in_kick < 10) {
+          r.reverse_GY = false;
+          r.moveAngle(0);
+          cnt_ball_in_kick += 1;
+          cnt_aim = 0;
+          arrived_to_goal = false;
+        } else if (!r.is_yellow) {
+          if (r.GY > 30 || r.GY < -30) r.stop();
+          else r.moveAngle(180);
+        } else if (r.distance_yellow < 120 && !arrived_to_goal ) {
+          cnt_aim = 0;
+          r.moveAngle(r.yellow_angle + 180);
+        } else if (r.distance_yellow > 170 && !arrived_to_goal) {
+          cnt_aim = 0;
+          r.moveAngle(r.yellow_angle);
+        } else {
+          arrived_to_goal = true;
+          if (r.lookToward(r.yellow_angle)) {
+            if (cnt_aim < 3) r.stop();
+            else r.shoot();
+            cnt_aim += 1;
+          }
+        }
+      }
+    } else if (r.is_ball) {
+      cnt_ball_in_kick = 0;
+      r.reverse_GY = false;
+      r.spin(1);
+      r.speed = (bd - 10) * 280;
+      if (bd < 80) shift = 80;
+      else shift = 45;
+      if (ba < 10 || ba > 350) r.moveAngle(ba);
+      else if (ba < 35) r.moveAngle(ba + shift / 2);
+      else if (ba > 360 - 35) r.moveAngle(ba - shift / 2);
+      else if (ba < 180) r.moveAngle(ba + shift);
+      else r.moveAngle(ba - shift);
     } else {
-      r.speed = 40000;
-      if (r.ball_angle < 50 || r.ball_angle > 310) r.moveAngle(r.ball_angle);
-      else if (r.ball_angle < 120) r.moveAngle(r.ball_angle + 30);
-      else if (r.ball_angle > 240) r.moveAngle(r.ball_angle - 30);
-      else if (r.ball_angle < 180) r.moveAngle(r.ball_angle + 60);
-      else r.moveAngle(r.ball_angle - 60);
+      r.reverse_GY = false;
+      r.spin(false);
+      r.stop();
     }
   } else {
-    if (cnt_back < 30) r.moveAngle(180);
-    else r.stop();
-    r.spin(0);
-    cnt_back++;
+    r.reverse_GY = false;
+    r.spin(false);
+    r.stop();
   }
 }
